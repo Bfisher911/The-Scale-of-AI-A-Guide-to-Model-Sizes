@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive AI Model Size Infographic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: absolute;
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Slider thumb custom styles */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #4f46e5; /* Indigo-600 */
+            cursor: pointer;
+            border-radius: 50%;
+            margin-top: -8px; /* Adjust to center */
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #4f46e5; /* Indigo-600 */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        /* Quiz card flip animation */
+        .flip-card {
+            perspective: 1000px;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.5rem;
+        }
+        
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">The Scale of AI: A Guide to Model Sizes</h1>
+            <p class="text-lg text-gray-600 mt-2">Understand the real-world impact of Large Language Model (LLM) parameters.</p>
+        </header>
+
+        <!-- Main Interactive Section -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+
+            <!-- Controls: Slider and Scenario Toggles -->
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+                <!-- Size Slider -->
+                <div class="w-full md:w-2/3">
+                    <label for="modelSizeSlider" class="block text-lg font-medium text-gray-700">Model Size: <span id="modelSizeLabel" class="font-bold text-indigo-600">7 B</span> Parameters</label>
+                    <input id="modelSizeSlider" type="range" min="3" max="175" value="7" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+                <!-- Scenario Toggles -->
+                <div class="flex-shrink-0">
+                    <div id="scenarioToggles" class="flex items-center border border-gray-300 rounded-lg p-1">
+                        <button data-scenario="local" class="scenario-btn bg-indigo-600 text-white px-4 py-2 text-sm font-medium rounded-md focus:outline-none">Local Laptop</button>
+                        <button data-scenario="hybrid" class="scenario-btn px-4 py-2 text-sm font-medium text-gray-500 rounded-md focus:outline-none">Hybrid Groq</button>
+                        <button data-scenario="cloud" class="scenario-btn px-4 py-2 text-sm font-medium text-gray-500 rounded-md focus:outline-none">Full Cloud</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bar Chart Visualization -->
+            <div id="chartContainer" class="w-full h-80 flex justify-around items-end gap-4 md:gap-8 border-t pt-6">
+                <!-- VRAM Bar -->
+                <div class="flex-1 flex flex-col items-center h-full justify-end relative has-tooltip">
+                    <div id="vramValue" class="text-xl font-bold text-gray-800 mb-2">14 GB</div>
+                    <div id="vramBar" class="w-full bg-blue-500 rounded-t-md" style="height: 25%; transition: height 0.5s ease-in-out;"></div>
+                    <p class="text-sm text-gray-500 mt-2">VRAM Needed</p>
+                    <div class="tooltip">Assumes fp16 weights (2 bytes/param). 1B params ≈ 2GB VRAM.</div>
+                </div>
+                <!-- Latency Bar -->
+                <div class="flex-1 flex flex-col items-center h-full justify-end relative has-tooltip">
+                    <div id="latencyValue" class="text-xl font-bold text-gray-800 mb-2">40 t/s</div>
+                    <div id="latencyBar" class="w-full bg-green-500 rounded-t-md" style="height: 60%; transition: height 0.5s ease-in-out;"></div>
+                    <p class="text-sm text-gray-500 mt-2">Tokens/Sec</p>
+                    <div class="tooltip">Performance on a high-end consumer GPU (e.g., RTX 4090).</div>
+                </div>
+                <!-- Cost Bar -->
+                <div class="flex-1 flex flex-col items-center h-full justify-end relative has-tooltip">
+                    <div id="costValue" class="text-xl font-bold text-gray-800 mb-2">$0</div>
+                    <div id="costBar" class="w-full bg-purple-500 rounded-t-md" style="height: 5%; transition: height 0.5s ease-in-out;"></div>
+                    <p class="text-sm text-gray-500 mt-2">Est. Monthly Cost</p>
+                    <div id="costTooltip" class="tooltip">One-time hardware cost, not a monthly fee.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Glossary & Quiz Section -->
+        <div class="flex flex-col md:flex-row gap-8 mt-8">
+            <!-- Glossary Trigger -->
+            <div class="w-full md:w-1/2">
+                <div class="bg-white p-6 rounded-lg shadow-lg text-center h-full flex flex-col justify-center">
+                    <h3 class="text-xl font-semibold mb-3">Confused by the terms?</h3>
+                    <p class="text-gray-600 mb-4">Click to learn about the key concepts behind LLMs.</p>
+                    <button id="openGlossaryBtn" class="mx-auto bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors">Open Glossary</button>
+                </div>
+            </div>
+
+            <!-- Mini Quiz Card -->
+            <div class="w-full md:w-1/2 flip-card h-48">
+                <div id="quizCardInner" class="flip-card-inner">
+                    <!-- Front of the card -->
+                    <div class="flip-card-front bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-semibold mb-2">Mini-Quiz!</h3>
+                        <p class="text-gray-600 mb-4">Select the smallest model that fits in 8GB VRAM and answers within 1s (at ~30 t/s).</p>
+                        <div class="flex justify-center gap-4">
+                            <button class="quiz-option bg-indigo-100 text-indigo-800 px-4 py-2 rounded-md hover:bg-indigo-200" data-answer="3B">3B</button>
+                            <button class="quiz-option bg-indigo-100 text-indigo-800 px-4 py-2 rounded-md hover:bg-indigo-200" data-answer="7B">7B</button>
+                            <button class="quiz-option bg-indigo-100 text-indigo-800 px-4 py-2 rounded-md hover:bg-indigo-200" data-answer="70B">70B</button>
+                        </div>
+                    </div>
+                    <!-- Back of the card -->
+                    <div id="quizFeedback" class="flip-card-back bg-white p-6 rounded-lg shadow-lg">
+                        <h3 id="feedbackTitle" class="text-2xl font-bold"></h3>
+                        <p id="feedbackText" class="mt-2 text-gray-700"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Glossary Modal -->
+    <div id="glossaryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-8 relative">
+            <button id="closeGlossaryBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            <h2 class="text-2xl font-bold mb-6">Glossary of LLM Terms</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="font-semibold text-lg text-indigo-700">Parameter</h3>
+                    <p class="text-gray-600 mt-1">Think of parameters as the "knobs" or "weights" the model learns during training. They are the internal variables that store the model's knowledge. The number of parameters (e.g., 7 billion) is a primary indicator of a model's size and potential capability.</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg text-indigo-700">Context Window</h3>
+                    <p class="text-gray-600 mt-1">The maximum amount of text (input + output) the model can consider at one time, measured in tokens (a token is roughly 3/4 of a word). A larger context window allows the model to "remember" more of the conversation or document, leading to more coherent and contextually-aware responses.</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg text-indigo-700">Quantization</h3>
+                    <p class="text-gray-600 mt-1">A technique to reduce the memory footprint and computational cost of a model. It involves converting the model's parameters from high-precision formats (like 16-bit floating point, fp16) to lower-precision formats (like 4-bit integers, int4). This makes it possible to run larger models on less powerful hardware, often with a small trade-off in accuracy.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM ELEMENT SELECTION ---
+        // Select all the interactive elements from the page to manipulate them with JavaScript.
+        const slider = document.getElementById('modelSizeSlider');
+        const sizeLabel = document.getElementById('modelSizeLabel');
+        const scenarioToggles = document.getElementById('scenarioToggles');
+        const vramBar = document.getElementById('vramBar');
+        const latencyBar = document.getElementById('latencyBar');
+        const costBar = document.getElementById('costBar');
+        const vramValue = document.getElementById('vramValue');
+        const latencyValue = document.getElementById('latencyValue');
+        const costValue = document.getElementById('costValue');
+        const costTooltip = document.getElementById('costTooltip');
+        const openGlossaryBtn = document.getElementById('openGlossaryBtn');
+        const closeGlossaryBtn = document.getElementById('closeGlossaryBtn');
+        const glossaryModal = document.getElementById('glossaryModal');
+        const quizOptions = document.querySelectorAll('.quiz-option');
+        const quizCard = document.querySelector('.flip-card');
+        const quizCardInner = document.getElementById('quizCardInner');
+        const feedbackTitle = document.getElementById('feedbackTitle');
+        const feedbackText = document.getElementById('feedbackText');
+        const quizFeedback = document.getElementById('quizFeedback');
+
+        // --- STATE AND DATA MANAGEMENT ---
+        // 'state' object holds the current interactive state.
+        // 'data' object contains the core information for calculations across different scenarios.
+        let state = {
+            modelSize: 7, // in billions of parameters
+            scenario: 'local' // 'local', 'hybrid', or 'cloud'
+        };
+
+        const data = {
+            local: {
+                vramPerB: 2, // GB per billion params (fp16)
+                latencyBase: 500, // Higher is slower, baseline for calculation
+                costBase: 0, // No recurring cloud cost
+                costTooltip: "One-time hardware cost, not a monthly fee."
+            },
+            hybrid: {
+                vramPerB: 0, // VRAM is on Groq's hardware
+                latencyBase: 20, // Very low latency with LPU
+                costBase: 0.25, // Example cost per million tokens
+                costTooltip: "Based on per-token usage. Example: ~$0.25/1M tokens."
+            },
+            cloud: {
+                vramPerB: 2, // VRAM needed on the cloud instance
+                latencyBase: 400, // Slower than local due to network, but powerful GPUs
+                costBase: 2, // Example cost per hour for a GPU instance
+                costTooltip: "Estimated monthly cost for a dedicated cloud GPU instance."
+            }
+        };
+
+        // --- CORE UPDATE FUNCTION ---
+        // This function is the heart of the infographic. It's called whenever the slider or scenario changes.
+        function updateVisualization() {
+            const { modelSize, scenario } = state;
+            const scenarioData = data[scenario];
+
+            // 1. VRAM Calculation
+            let vramNeeded = modelSize * scenarioData.vramPerB;
+            if (scenario === 'hybrid') vramNeeded = 0; // Groq handles VRAM
+            vramValue.textContent = `${vramNeeded.toFixed(1)} GB`;
+            // Scale bar height (max 256GB VRAM for scaling)
+            let vramHeight = Math.min(100, (vramNeeded / 256) * 100);
+            vramBar.style.height = `${vramHeight}%`;
+
+            // 2. Latency (Tokens/Sec) Calculation
+            // This is an illustrative formula. Larger models are slower. Hybrid is fastest.
+            let latency = Math.max(5, scenarioData.latencyBase / Math.sqrt(modelSize));
+            if (scenario === 'hybrid') {
+                 latency = Math.max(200, scenarioData.latencyBase * (175 / modelSize)); // Groq is very fast
+            }
+            latencyValue.textContent = `${Math.round(latency)} t/s`;
+            // Scale bar height (max 500 t/s for scaling)
+            let latencyHeight = Math.min(100, (latency / 500) * 100);
+            latencyBar.style.height = `${latencyHeight}%`;
+
+            // 3. Cost Calculation
+            let cost = 0;
+            if (scenario === 'cloud') {
+                // Cost scales with model size (bigger models need beefier, more expensive GPUs)
+                cost = scenarioData.costBase * (modelSize / 7) * 24 * 30; // $/hr * scale_factor * hours_in_month
+                costValue.textContent = `$${Math.round(cost)}`;
+            } else if (scenario === 'hybrid') {
+                // Cost scales with usage, but let's represent a potential monthly bill
+                cost = scenarioData.costBase * modelSize * 10; // Illustrative cost based on usage
+                costValue.textContent = `~$${Math.round(cost)}`;
+            } else { // local
+                costValue.textContent = '$0';
+            }
+            costTooltip.textContent = scenarioData.costTooltip;
+            // Scale bar height (max $5000/month for scaling)
+            let costHeight = Math.min(100, (cost / 5000) * 100);
+            costBar.style.height = `${costHeight}%`;
+        }
+
+        // --- EVENT LISTENERS ---
+
+        // Slider Event Listener
+        slider.addEventListener('input', (e) => {
+            state.modelSize = parseInt(e.target.value);
+            sizeLabel.textContent = `${state.modelSize} B`;
+            updateVisualization();
+        });
+
+        // Scenario Toggles Event Listener
+        scenarioToggles.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const newScenario = e.target.dataset.scenario;
+                if (newScenario !== state.scenario) {
+                    state.scenario = newScenario;
+                    // Update button styles
+                    document.querySelectorAll('.scenario-btn').forEach(btn => {
+                        btn.classList.remove('bg-indigo-600', 'text-white');
+                        btn.classList.add('text-gray-500');
+                    });
+                    e.target.classList.add('bg-indigo-600', 'text-white');
+                    e.target.classList.remove('text-gray-500');
+                    updateVisualization();
+                }
+            }
+        });
+
+        // Glossary Modal Listeners
+        openGlossaryBtn.addEventListener('click', () => {
+            glossaryModal.classList.remove('hidden');
+        });
+
+        closeGlossaryBtn.addEventListener('click', () => {
+            glossaryModal.classList.add('hidden');
+        });
+
+        glossaryModal.addEventListener('click', (e) => {
+            if (e.target === glossaryModal) { // Close if clicking on the background
+                glossaryModal.classList.add('hidden');
+            }
+        });
+
+        // Mini-Quiz Listeners
+        quizOptions.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const selectedAnswer = e.target.dataset.answer;
+                const correctAnswer = "3B"; // 3B * 2GB/B = 6GB VRAM, which is < 8GB. 7B needs 14GB.
+                
+                if (selectedAnswer === correctAnswer) {
+                    feedbackTitle.textContent = "Correct!";
+                    feedbackText.textContent = "A 3B parameter model at fp16 needs ~6GB of VRAM, fitting comfortably within an 8GB limit.";
+                    quizFeedback.classList.remove('bg-red-100');
+                    quizFeedback.classList.add('bg-green-100');
+                    feedbackTitle.classList.remove('text-red-800');
+                    feedbackTitle.classList.add('text-green-800');
+                } else {
+                    feedbackTitle.textContent = "Not Quite!";
+                    feedbackText.textContent = `A ${selectedAnswer} model needs about ${parseInt(selectedAnswer) * 2}GB of VRAM, which exceeds the 8GB limit. Try again!`;
+                    quizFeedback.classList.remove('bg-green-100');
+                    quizFeedback.classList.add('bg-red-100');
+                    feedbackTitle.classList.remove('text-green-800');
+                    feedbackTitle.classList.add('text-red-800');
+                }
+                
+                quizCard.classList.add('flipped');
+
+                // Reset after a few seconds
+                setTimeout(() => {
+                    quizCard.classList.remove('flipped');
+                }, 4000);
+            });
+        });
+
+        // --- INITIALIZATION ---
+        // Call the update function once on page load to set the initial state.
+        updateVisualization();
+    });
+    </script>
+</body>
+</html>
